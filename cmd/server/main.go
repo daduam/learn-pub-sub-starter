@@ -14,19 +14,31 @@ func main() {
 	fmt.Println("Starting Peril server...")
 
 	url := "amqp://guest:guest@localhost:5672/"
-	source, err := amqp.Dial(url)
+	conn, err := amqp.Dial(url)
 	if err != nil {
 		log.Fatalf("amqp connection failed: %s", err)
 	}
-	defer source.Close()
+	defer conn.Close()
 	fmt.Println("amqp connection successful")
 
-	ch, err := source.Channel()
+	ch, err := conn.Channel()
 	if err != nil {
 		log.Fatalf("creating channel failed: %s", err)
 	}
 	defer ch.Close()
 	fmt.Println("channel created successful")
+
+	_, queue, err := pubsub.DeclareAndBind(
+		conn,
+		routing.ExchangePerilTopic,
+		routing.GameLogSlug,
+		routing.GameLogSlug+".*",
+		pubsub.SimpleQueueTypeDurable,
+	)
+	if err != nil {
+		log.Fatalf("Error declaring and binding queue: %v", err)
+	}
+	fmt.Printf("Queue %v declared and bound!\n", queue.Name)
 
 	gamelogic.PrintServerHelp()
 
